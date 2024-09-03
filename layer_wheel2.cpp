@@ -12,7 +12,7 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
 
 #include <cstdint>
 #include <cstring>
-#include <tuple>
+#include <bit>
 
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -27,25 +27,36 @@ using namespace sigma_lib::W32::UI;
 ////////////////////////////////
 // ExEdit 実体．
 ////////////////////////////////
-static inline constinit struct {
-	constexpr static auto name_exedit = "拡張編集";
-	AviUtl::FilterPlugin* fp = nullptr;
-	decltype(fp->func_WndProc) func_wndproc_orig = nullptr;
-
-	bool init(AviUtl::FilterPlugin* this_fp) {
-		if (fp == nullptr) {
-			AviUtl::SysInfo si; this_fp->exfunc->get_sys_info(nullptr, &si);
-			for (int i = 0; i < si.filter_n; i++) {
-				auto that_fp = this_fp->exfunc->get_filterp(i);
-				if (that_fp->name != nullptr &&
-					0 == std::strcmp(that_fp->name, name_exedit)) {
-					fp = that_fp;
-					func_wndproc_orig = fp->func_WndProc;
-					break;
-				}
+inline constinit struct ExEdit092 {
+	AviUtl::FilterPlugin* fp;
+	decltype(fp->func_WndProc) func_wndproc_orig;
+	constexpr static char const* info_exedit092 = "拡張編集(exedit) version 0.92 by ＫＥＮくん";
+	bool init(AviUtl::FilterPlugin* this_fp)
+	{
+		if (fp != nullptr) return true;
+		AviUtl::SysInfo si; this_fp->exfunc->get_sys_info(nullptr, &si);
+		for (int i = 0; i < si.filter_n; i++) {
+			auto that_fp = this_fp->exfunc->get_filterp(i);
+			if (that_fp->information != nullptr &&
+				0 == std::strcmp(that_fp->information, info_exedit092)) {
+				fp = that_fp;
+				func_wndproc_orig = fp->func_WndProc;
+				init_pointers();
+				return true;
 			}
 		}
-		return fp != nullptr;
+		return false;
+	}
+
+	int32_t* timeline_width; // 0x1a52fc
+
+private:
+	void init_pointers()
+	{
+		auto pick_addr = [exedit_base=reinterpret_cast<uintptr_t>(fp->dll_hinst)]
+			<class T>(T& target, ptrdiff_t offset) { target = std::bit_cast<T>(exedit_base + offset); };
+
+		pick_addr(timeline_width, 0x1a52fc);
 	}
 } exedit;
 
@@ -55,12 +66,16 @@ static inline constinit struct {
 ////////////////////////////////
 BOOL exedit_func_wndproc_hook(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, AviUtl::EditHandle* editp, AviUtl::FilterPlugin* fp)
 {
+	constexpr int tl_origin_x = 64, tl_origin_y = 42,
+		gauge_top = 21, scroll_v_width = 13;
+
 	switch (message) {
 	case WM_MOUSEWHEEL:
 		POINT pt{ static_cast<int16_t>(lparam), static_cast<int16_t>(lparam >> 16) };
 		::ScreenToClient(hwnd, &pt);
-		if (pt.x < 64 && pt.y >= 21) {
-			if (pt.y >= 42) {
+		if ((pt.x < tl_origin_x && pt.y >= gauge_top) ||
+			(*exedit.timeline_width <= pt.x && pt.x < *exedit.timeline_width + scroll_v_width)) {
+			if (pt.y >= tl_origin_y || pt.x >= tl_origin_x) {
 				wparam &= ~MK_CONTROL;
 				ForceKeyState k{ VK_MENU, flag_map::inv };
 				return exedit.func_wndproc_orig(hwnd, message, wparam, lparam, editp, fp);
@@ -81,7 +96,8 @@ BOOL exedit_func_wndproc_hook(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpa
 BOOL func_init(AviUtl::FilterPlugin* fp)
 {
 	if (!exedit.init(fp)) {
-		::MessageBoxA(fp->hwnd, "拡張編集が見つかりませんでした．", fp->name, MB_OK | MB_ICONEXCLAMATION);
+		::MessageBoxA(fp->hwnd, "拡張編集0.92が見つかりませんでした．",
+			fp->name, MB_OK | MB_ICONEXCLAMATION);
 		return FALSE;
 	}
 
@@ -110,7 +126,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD fdwReason, LPVOID lpvReserved)
 // 看板．
 ////////////////////////////////
 #define PLUGIN_NAME		"Layer Wheel 2"
-#define PLUGIN_VERSION	"v1.00"
+#define PLUGIN_VERSION	"v1.10-beta1"
 #define PLUGIN_AUTHOR	"sigma-axis"
 #define PLUGIN_INFO_FMT(name, ver, author)	(name##" "##ver##" by "##author)
 #define PLUGIN_INFO		PLUGIN_INFO_FMT(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
