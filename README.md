@@ -12,7 +12,7 @@ nazoSAUNA様の [LayerWheel](https://github.com/nazonoSAUNA/LayerWheel) プラ�
 - AviUtl 1.10 + 拡張編集 0.92
 
   https://spring-fragrance.mints.ne.jp/aviutl
-  - 拡張編集 0.93rc1 等の他バージョンでも動くはずですが未確認．
+  - 拡張編集 0.93rc1 等の他バージョンでは動作しません．
 
 - Visual C++ 再頒布可能パッケージ（\[2015/2017/2019/2022\] の x86 対応版が必要）
 
