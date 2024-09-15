@@ -13,7 +13,6 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
 #include <cstdint>
 #include <cstring>
 #include <bit>
-#include <cstdio>
 
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -129,7 +128,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD fdwReason, LPVOID lpvReserved)
 // 看板．
 ////////////////////////////////
 #define PLUGIN_NAME		"Layer Wheel 2"
-#define PLUGIN_VERSION	"v1.11-beta1"
+#define PLUGIN_VERSION	"v1.11"
 #define PLUGIN_AUTHOR	"sigma-axis"
 #define PLUGIN_INFO_FMT(name, ver, author)	(name##" "##ver##" by "##author)
 #define PLUGIN_INFO		PLUGIN_INFO_FMT(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
