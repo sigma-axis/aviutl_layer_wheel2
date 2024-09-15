@@ -13,6 +13,7 @@ THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR I
 #include <cstdint>
 #include <cstring>
 #include <bit>
+#include <cstdio>
 
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -29,7 +30,6 @@ using namespace sigma_lib::W32::UI;
 ////////////////////////////////
 inline constinit struct ExEdit092 {
 	AviUtl::FilterPlugin* fp;
-	decltype(fp->func_WndProc) func_wndproc_orig;
 	constexpr static char const* info_exedit092 = "拡張編集(exedit) version 0.92 by ＫＥＮくん";
 	bool init(AviUtl::FilterPlugin* this_fp)
 	{
@@ -40,7 +40,6 @@ inline constinit struct ExEdit092 {
 			if (that_fp->information != nullptr &&
 				0 == std::strcmp(that_fp->information, info_exedit092)) {
 				fp = that_fp;
-				func_wndproc_orig = fp->func_WndProc;
 				init_pointers();
 				return true;
 			}
@@ -48,7 +47,8 @@ inline constinit struct ExEdit092 {
 		return false;
 	}
 
-	int32_t* timeline_width; // 0x1a52fc
+	decltype(fp->func_WndProc) func_wndproc_orig;
+	SIZE*	timeline_size; // 0x1a52fc, excludes right vertical scroll bar.
 
 private:
 	void init_pointers()
@@ -56,7 +56,8 @@ private:
 		auto pick_addr = [exedit_base=reinterpret_cast<uintptr_t>(fp->dll_hinst)]
 			<class T>(T& target, ptrdiff_t offset) { target = std::bit_cast<T>(exedit_base + offset); };
 
-		pick_addr(timeline_width, 0x1a52fc);
+		func_wndproc_orig = fp->func_WndProc;
+		pick_addr(timeline_size, 0x1a52fc);
 	}
 } exedit;
 
@@ -67,20 +68,22 @@ private:
 BOOL exedit_func_wndproc_hook(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, AviUtl::EditHandle* editp, AviUtl::FilterPlugin* fp)
 {
 	constexpr int tl_origin_x = 64, tl_origin_y = 42,
-		gauge_top = 21, scroll_v_width = 13;
+		gauge_top = 21, scrollbar_thick = 13;
 
 	switch (message) {
 	case WM_MOUSEWHEEL:
 		POINT pt{ static_cast<int16_t>(lparam), static_cast<int16_t>(lparam >> 16) };
 		::ScreenToClient(hwnd, &pt);
-		if ((pt.x < tl_origin_x && pt.y >= gauge_top) ||
-			(*exedit.timeline_width <= pt.x && pt.x < *exedit.timeline_width + scroll_v_width)) {
+		if (pt.y < exedit.timeline_size->cy && (
+			(0 <= pt.x && pt.x < tl_origin_x && gauge_top <= pt.y) ||
+			(exedit.timeline_size->cx <= pt.x && pt.x < exedit.timeline_size->cx + scrollbar_thick &&
+				scrollbar_thick <= pt.y))) {
 			if (pt.y >= tl_origin_y || pt.x >= tl_origin_x) {
 				wparam &= ~MK_CONTROL;
 				ForceKeyState k{ VK_MENU, flag_map::inv };
 				return exedit.func_wndproc_orig(hwnd, message, wparam, lparam, editp, fp);
 			}
-			
+
 			wparam |= MK_CONTROL;
 		}
 		break;
@@ -126,7 +129,7 @@ BOOL WINAPI DllMain(HINSTANCE hinst, DWORD fdwReason, LPVOID lpvReserved)
 // 看板．
 ////////////////////////////////
 #define PLUGIN_NAME		"Layer Wheel 2"
-#define PLUGIN_VERSION	"v1.10"
+#define PLUGIN_VERSION	"v1.11-beta1"
 #define PLUGIN_AUTHOR	"sigma-axis"
 #define PLUGIN_INFO_FMT(name, ver, author)	(name##" "##ver##" by "##author)
 #define PLUGIN_INFO		PLUGIN_INFO_FMT(PLUGIN_NAME, PLUGIN_VERSION, PLUGIN_AUTHOR)
